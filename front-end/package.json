@@ -17,6 +17,6 @@
     "vite": "^4.5.3"
   },
   "dependencies": {
-    "svelte-markdown": "^0.4.0"
+    "svelte-markdown": "^0.4.1"
   }
 }
