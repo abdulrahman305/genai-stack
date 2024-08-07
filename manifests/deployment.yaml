@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genstack
+  labels:
+    app: genstack
+    kubernetes.azure.com/generator: devhub
+  namespace: aks-istio-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: genstack
+  template:
+    metadata:
+      labels:
+        app: genstack
+    spec:
+      containers:
+        - name: genstack
+          image: acrworkflow1723012492625.azurecr.io/image-workflow-1723012492625:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
