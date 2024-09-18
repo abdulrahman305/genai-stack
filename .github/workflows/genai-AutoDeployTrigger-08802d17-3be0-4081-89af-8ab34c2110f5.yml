@@ -1,0 +1,48 @@
+name: Trigger auto deployment for genai
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/genai-AutoDeployTrigger-08802d17-3be0-4081-89af-8ab34c2110f5.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.GENAI_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.GENAI_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.GENAI_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: hub.docker.com
+          registryUsername: ${{ secrets.GENAI_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.GENAI_REGISTRY_PASSWORD }}
+          containerAppName: genai
+          resourceGroup: kubeops_group
+          imageToBuild: hub.docker.com/genai:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
