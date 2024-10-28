@@ -176,3 +176,38 @@ To make this repository self-bootable using the PXE server, follow these steps:
 5. Once the PXE server is running and your devices are configured to boot from it, you should be able to boot your devices using the PXE server.
 
 For more information on configuring and using the PXE server, refer to the documentation of the `node-js-pxe-server` repository: https://github.com/abdulrahman305/node-js-pxe-server
+
+## Update Functionality
+
+The repository now includes functionality to update data in the Neo4j database. The update functionality is implemented in the `api.py` file and can be accessed via the `/update` endpoint.
+
+### Update Endpoint
+
+The `/update` endpoint allows you to update data in the Neo4j database. The endpoint expects a JSON request body with the following structure:
+
+```json
+{
+  "id": "node_id",
+  "data": {
+    "property1": "value1",
+    "property2": "value2",
+    ...
+  }
+}
+```
+
+### Example Usage
+
+To update a node in the Neo4j database, send a `POST` request to the `/update` endpoint with the JSON request body. Here is an example using `curl`:
+
+```bash
+curl -X POST http://localhost:8504/update -H "Content-Type: application/json" -d '{
+  "id": "node_id",
+  "data": {
+    "property1": "value1",
+    "property2": "value2"
+  }
+}'
+```
+
+This will update the node with the specified `id` in the Neo4j database with the provided data.

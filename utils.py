@@ -52,3 +52,11 @@ def create_constraints(driver):
     driver.query(
         "CREATE CONSTRAINT tag_name IF NOT EXISTS FOR (t:Tag) REQUIRE (t.name) IS UNIQUE"
     )
+
+
+def update_data(driver, node_id: str, data: dict) -> None:
+    update_query = """
+    MATCH (n {id: $node_id})
+    SET n += $data
+    """
+    driver.query(update_query, {"node_id": node_id, "data": data})

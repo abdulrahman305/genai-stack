@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from utils import (
     create_vector_index,
     BaseLogger,
+    update_data
 )
 from chains import (
     load_embedding_model,
@@ -117,6 +118,11 @@ class BaseTicket(BaseModel):
     text: str
 
 
+class UpdateData(BaseModel):
+    id: str
+    data: dict
+
+
 @app.get("/query-stream")
 def qstream(question: Question = Depends()):
     output_function = llm_chain
@@ -159,3 +165,9 @@ async def generate_ticket_api(question: BaseTicket = Depends()):
         input_question=question.text,
     )
     return {"result": {"title": new_title, "text": new_question}, "model": llm_name}
+
+
+@app.post("/update")
+async def update(update_data: UpdateData):
+    update_data(neo4j_graph, update_data.id, update_data.data)
+    return {"message": "Data updated successfully"}
