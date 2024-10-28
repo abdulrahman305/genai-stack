@@ -25,6 +25,8 @@ Available variables:
 | LANGCHAIN_TRACING_V2   | false                              | OPTIONAL - Enable Langchain tracing v2                                  |
 | LANGCHAIN_PROJECT      |                                    | OPTIONAL - Langchain project name                                       |
 | LANGCHAIN_API_KEY      |                                    | OPTIONAL - Langchain API key                                            |
+| PXE_SERVER_IP          |                                    | REQUIRED - IP address of the PXE server                                 |
+| PXE_SERVER_PORT        |                                    | REQUIRED - Port number of the PXE server                                |
 
 ## LLM Configuration
 MacOS and Linux users can use any LLM that's available via Ollama. Check the "tags" section under the model page you want to use on https://ollama.ai/library and write the tag for the value of the environment variable `LLM=` in the `.env` file.
