@@ -239,5 +239,13 @@ services:
     ports:
       - 8505:8505
 
+  pxe-server:
+    image: abdulrahman305/node-js-pxe-server:latest
+    networks:
+      - net
+    depends_on:
+      - database
+      - pull-model
+
 networks:
   net:
