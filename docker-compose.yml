@@ -247,5 +247,14 @@ services:
       - database
       - pull-model
 
+  sync-upstream:
+    image: alpine:latest
+    volumes:
+      - .:/repo
+    working_dir: /repo
+    entrypoint: ["/bin/sh", "-c", "./scripts/sync-upstream.sh"]
+    networks:
+      - net
+
 networks:
   net:

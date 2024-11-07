@@ -213,3 +213,14 @@ curl -X POST http://localhost:8504/update -H "Content-Type: application/json" -d
 ```
 
 This will update the node with the specified `id` in the Neo4j database with the provided data.
+
+## Syncing with Upstream Repositories
+
+To sync your local repository with the upstream repository, follow these steps:
+
+1. Run the sync script:
+    ```
+    ./scripts/sync-upstream.sh
+    ```
+
+This script will fetch and merge changes from the upstream repository into your local repository.
