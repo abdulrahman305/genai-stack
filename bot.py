@@ -1,5 +1,5 @@
 import os
-
+import logging
 import streamlit as st
 from streamlit.logger import get_logger
 from langchain.callbacks.base import BaseCallbackHandler
@@ -15,31 +15,54 @@ from chains import (
     configure_qa_rag_chain,
     generate_ticket,
 )
+import asyncio
 
+# Load environment variables from .env file
 load_dotenv(".env")
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Retrieve environment variables
 url = os.getenv("NEO4J_URI")
 username = os.getenv("NEO4J_USERNAME")
 password = os.getenv("NEO4J_PASSWORD")
 ollama_base_url = os.getenv("OLLAMA_BASE_URL")
 embedding_model_name = os.getenv("EMBEDDING_MODEL")
 llm_name = os.getenv("LLM")
+
 # Remapping for Langchain Neo4j integration
 os.environ["NEO4J_URL"] = url
 
-logger = get_logger(__name__)
+# Initialize Neo4j graph
+try:
+    neo4j_graph = Neo4jGraph(
+        url=url, username=username, password=password, refresh_schema=False
+    )
+    create_vector_index(neo4j_graph)
+except Exception as e:
+    logger.error(f"Error initializing Neo4j graph: {e}")
+    st.error("Error initializing Neo4j graph")
+    raise
 
-# if Neo4j is local, you can go to http://localhost:7474/ to browse the database
-neo4j_graph = Neo4jGraph(
-    url=url, username=username, password=password, refresh_schema=False
-)
+# Load embedding model
 embeddings, dimension = load_embedding_model(
     embedding_model_name, config={"ollama_base_url": ollama_base_url}, logger=logger
 )
-create_vector_index(neo4j_graph)
 
+# Load LLM
+llm = load_llm(llm_name, logger=logger, config={"ollama_base_url": ollama_base_url})
+
+# Configure LLM chains
+llm_chain = configure_llm_only_chain(llm)
+rag_chain = configure_qa_rag_chain(
+    llm, embeddings, embeddings_store_url=url, username=username, password=password
+)
 
 class StreamHandler(BaseCallbackHandler):
+    """Callback handler for streaming LLM responses to Streamlit container."""
+
     def __init__(self, container, initial_text=""):
         self.container = container
         self.text = initial_text
@@ -47,14 +70,6 @@ class StreamHandler(BaseCallbackHandler):
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         self.text += token
         self.container.markdown(self.text)
-
-
-llm = load_llm(llm_name, logger=logger, config={"ollama_base_url": ollama_base_url})
-
-llm_chain = configure_llm_only_chain(llm)
-rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password
-)
 
 # Streamlit UI
 styl = f"""
@@ -82,8 +97,8 @@ styl = f"""
 """
 st.markdown(styl, unsafe_allow_html=True)
 
-
 def chat_input():
+    """Handle user input and generate LLM response."""
     user_input = st.chat_input("What coding issue can I help you resolve today?")
 
     if user_input:
@@ -92,16 +107,20 @@ def chat_input():
         with st.chat_message("assistant"):
             st.caption(f"RAG: {name}")
             stream_handler = StreamHandler(st.empty())
-            result = output_function(
-                {"question": user_input, "chat_history": []}, callbacks=[stream_handler]
-            )["answer"]
-            output = result
-            st.session_state[f"user_input"].append(user_input)
-            st.session_state[f"generated"].append(output)
-            st.session_state[f"rag_mode"].append(name)
-
+            try:
+                result = asyncio.run(output_function(
+                    {"question": user_input, "chat_history": []}, callbacks=[stream_handler]
+                ))["answer"]
+                output = result
+                st.session_state[f"user_input"].append(user_input)
+                st.session_state[f"generated"].append(output)
+                st.session_state[f"rag_mode"].append(name)
+            except Exception as e:
+                logger.error(f"Error processing user input: {e}")
+                st.error("Error processing user input")
 
 def display_chat():
+    """Display chat history."""
     # Session state
     if "generated" not in st.session_state:
         st.session_state[f"generated"] = []
@@ -136,11 +155,10 @@ def display_chat():
         with st.container():
             st.write("&nbsp;")
 
-
 def mode_select() -> str:
+    """Select RAG mode."""
     options = ["Disabled", "Enabled"]
     return st.radio("Select RAG mode", options, horizontal=True)
-
 
 name = mode_select()
 if name == "LLM only" or name == "Disabled":
@@ -148,35 +166,37 @@ if name == "LLM only" or name == "Disabled":
 elif name == "Vector + Graph" or name == "Enabled":
     output_function = rag_chain
 
-
 def open_sidebar():
+    """Open sidebar for ticket generation."""
     st.session_state.open_sidebar = True
 
-
 def close_sidebar():
+    """Close sidebar for ticket generation."""
     st.session_state.open_sidebar = False
-
 
 if not "open_sidebar" in st.session_state:
     st.session_state.open_sidebar = False
 if st.session_state.open_sidebar:
-    new_title, new_question = generate_ticket(
-        neo4j_graph=neo4j_graph,
-        llm_chain=llm_chain,
-        input_question=st.session_state[f"user_input"][-1],
-    )
-    with st.sidebar:
-        st.title("Ticket draft")
-        st.write("Auto generated draft ticket")
-        st.text_input("Title", new_title)
-        st.text_area("Description", new_question)
-        st.button(
-            "Submit to support team",
-            type="primary",
-            key="submit_ticket",
-            on_click=close_sidebar,
+    try:
+        new_title, new_question = generate_ticket(
+            neo4j_graph=neo4j_graph,
+            llm_chain=llm_chain,
+            input_question=st.session_state[f"user_input"][-1],
         )
-
+        with st.sidebar:
+            st.title("Ticket draft")
+            st.write("Auto generated draft ticket")
+            st.text_input("Title", new_title)
+            st.text_area("Description", new_question)
+            st.button(
+                "Submit to support team",
+                type="primary",
+                key="submit_ticket",
+                on_click=close_sidebar,
+            )
+    except Exception as e:
+        logger.error(f"Error generating ticket: {e}")
+        st.error("Error generating ticket")
 
 display_chat()
 chat_input()
