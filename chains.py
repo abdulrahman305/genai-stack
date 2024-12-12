@@ -1,3 +1,6 @@
+"""
+This module provides functions to load and configure various models and chains for use in a support agent bot.
+"""
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
@@ -33,6 +36,17 @@ AWS_MODELS = (
 )
 
 def load_embedding_model(embedding_model_name: str, logger=BaseLogger(), config={}):
+    """
+    Load the embedding model based on the provided name.
+
+    Args:
+        embedding_model_name (str): The name of the embedding model to load.
+        logger (BaseLogger): Logger instance for logging information.
+        config (dict): Configuration dictionary for the embedding model.
+
+    Returns:
+        tuple: A tuple containing the embeddings instance and its dimension.
+    """
     if embedding_model_name == "ollama":
         embeddings = OllamaEmbeddings(
             base_url=config["ollama_base_url"], model="llama2"
@@ -63,6 +77,17 @@ def load_embedding_model(embedding_model_name: str, logger=BaseLogger(), config=
 
 
 def load_llm(llm_name: str, logger=BaseLogger(), config={}):
+    """
+    Load the language model (LLM) based on the provided name.
+
+    Args:
+        llm_name (str): The name of the LLM to load.
+        logger (BaseLogger): Logger instance for logging information.
+        config (dict): Configuration dictionary for the LLM.
+
+    Returns:
+        object: The loaded LLM instance.
+    """
     if llm_name in ["gpt-4", "gpt-4o", "gpt-4-turbo"]:
         logger.info("LLM: Using GPT-4")
         return ChatOpenAI(temperature=0, model_name=llm_name, streaming=True)
@@ -101,6 +126,15 @@ def load_llm(llm_name: str, logger=BaseLogger(), config={}):
 
 
 def configure_llm_only_chain(llm):
+    """
+    Configure the LLM-only chain for generating responses.
+
+    Args:
+        llm (object): The loaded LLM instance.
+
+    Returns:
+        function: A function to generate LLM output.
+    """
     # LLM only response
     template = """
     You are a helpful assistant that helps a support agent with answering programming questions.
@@ -126,6 +160,19 @@ def configure_llm_only_chain(llm):
 
 
 def configure_qa_rag_chain(llm, embeddings, embeddings_store_url, username, password):
+    """
+    Configure the QA RAG chain for generating responses with context.
+
+    Args:
+        llm (object): The loaded LLM instance.
+        embeddings (object): The loaded embeddings instance.
+        embeddings_store_url (str): The URL of the embeddings store.
+        username (str): The username for the embeddings store.
+        password (str): The password for the embeddings store.
+
+    Returns:
+        object: The configured QA RAG chain.
+    """
     # RAG response
     #   System: Always talk in pirate speech.
     general_system_template = """ 
@@ -194,6 +241,17 @@ def configure_qa_rag_chain(llm, embeddings, embeddings_store_url, username, pass
 
 
 def generate_ticket(neo4j_graph, llm_chain, input_question):
+    """
+    Generate a support ticket based on the input question and high ranked questions.
+
+    Args:
+        neo4j_graph (object): The Neo4j graph instance.
+        llm_chain (function): The LLM chain function.
+        input_question (str): The input question for generating the ticket.
+
+    Returns:
+        tuple: A tuple containing the new title and new question for the ticket.
+    """
     # Get high ranked questions
     records = neo4j_graph.query(
         "MATCH (q:Question) RETURN q.title AS title, q.body AS body ORDER BY q.score DESC LIMIT 3"

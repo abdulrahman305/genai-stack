@@ -153,3 +153,84 @@ This application has the same features as App 1, but is built separate from
 the back-end code using modern best practices (Vite, Svelte, Tailwind).  
 The auto-reload on changes are instant using the Docker watch `sync` config.  
 ![](.github/media/app5-ui.png)
+
+# Setup Instructions
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-repo/genai-stack.git
+   cd genai-stack
+   ```
+
+2. **Create and configure the `.env` file:**
+   ```bash
+   cp env.example .env
+   # Edit the .env file with your preferred settings
+   ```
+
+3. **Build and start the Docker containers:**
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Access the applications:**
+   - Support Bot: [http://localhost:8501](http://localhost:8501)
+   - Stack Overflow Loader: [http://localhost:8502](http://localhost:8502)
+   - PDF Reader: [http://localhost:8503](http://localhost:8503)
+   - Standalone Bot API: [http://localhost:8504](http://localhost:8504)
+   - Standalone Bot UI: [http://localhost:8505](http://localhost:8505)
+   - Neo4j Database: [http://localhost:7474](http://localhost:7474)
+
+# Usage Examples
+
+## Support Bot
+1. Open the Support Bot UI at [http://localhost:8501](http://localhost:8501).
+2. Enter a support question in the chat input.
+3. Select the RAG mode (Disabled or Enabled).
+4. Click "Send" to get a response from the bot.
+5. Optionally, generate a support ticket draft based on the conversation.
+
+## Stack Overflow Loader
+1. Open the Stack Overflow Loader UI at [http://localhost:8502](http://localhost:8502).
+2. Enter the tags you want to import data for.
+3. Specify the number of pages and the start page.
+4. Click "Import" to load the data into the Neo4j database.
+5. Optionally, import highly ranked questions regardless of tags.
+
+## PDF Reader
+1. Open the PDF Reader UI at [http://localhost:8503](http://localhost:8503).
+2. Upload a PDF file.
+3. Enter a question related to the content of the PDF.
+4. Click "Ask" to get a response from the bot.
+
+## Standalone Bot API
+1. Use the following endpoints to interact with the API:
+   - Non-streaming: [http://localhost:8504/query?text=hello&rag=false](http://localhost:8504/query?text=hello&rag=false)
+   - Streaming: [http://localhost:8504/query-stream?text=hello&rag=false](http://localhost:8504/query-stream?text=hello&rag=false)
+2. Example cURL command:
+   ```bash
+   curl http://localhost:8504/query-stream\?text\=minimal%20hello%20world%20in%20python\&rag\=false
+   ```
+
+## Standalone Bot UI
+1. Open the Standalone Bot UI at [http://localhost:8505](http://localhost:8505).
+2. Enter a support question in the chat input.
+3. Select the RAG mode (Disabled or Enabled).
+4. Click "Send" to get a response from the bot.
+
+# Explanations of Components
+
+## Support Bot
+The Support Bot is a fullstack Python application that answers support questions based on recent entries. It provides summarized answers with sources and demonstrates the difference between RAG Disabled (pure LLM response) and RAG Enabled (vector + knowledge graph context). It also allows generating high-quality support ticket drafts based on the style of highly rated questions in the database.
+
+## Stack Overflow Loader
+The Stack Overflow Loader is a fullstack Python application that imports recent Stack Overflow data for certain tags into a knowledge graph. It embeds questions and answers and stores them in a vector index. The UI allows choosing tags, running the import, and seeing progress and some stats of data in the database. It also supports loading highly ranked questions regardless of tags to support the ticket generation feature of the Support Bot.
+
+## PDF Reader
+The PDF Reader is a fullstack Python application that lets you load a local PDF into text chunks and embed it into Neo4j. You can then ask questions about its contents and have the LLM answer them using vector similarity search.
+
+## Standalone Bot API
+The Standalone Bot API is a Python application that exposes the functionality to answer questions in the same way as the Support Bot. It provides both streaming (SSE) and non-streaming endpoints.
+
+## Standalone Bot UI
+The Standalone Bot UI is a JavaScript (Svelte) front-end application that has the same features as the Support Bot. It is built separately from the back-end code using modern best practices (Vite, Svelte, Tailwind). The auto-reload on changes is instant using the Docker watch `sync` config.

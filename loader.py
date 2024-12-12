@@ -7,6 +7,7 @@ from streamlit.logger import get_logger
 from chains import load_embedding_model
 from utils import create_constraints, create_vector_index
 from PIL import Image
+import logging
 
 load_dotenv(".env")
 
@@ -18,7 +19,9 @@ embedding_model_name = os.getenv("EMBEDDING_MODEL")
 # Remapping for Langchain Neo4j integration
 os.environ["NEO4J_URL"] = url
 
-logger = get_logger(__name__)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 so_api_base_url = "https://api.stackexchange.com/2.3/search/advanced"
 
@@ -40,8 +43,15 @@ def load_so_data(tag: str = "neo4j", page: int = 1) -> None:
         f"?pagesize=100&page={page}&order=desc&sort=creation&answers=1&tagged={tag}"
         "&site=stackoverflow&filter=!*236eb_eL9rai)MOSNZ-6D3Q6ZKb0buI*IVotWaTb"
     )
-    data = requests.get(so_api_base_url + parameters).json()
-    insert_so_data(data)
+    try:
+        data = requests.get(so_api_base_url + parameters).json()
+        insert_so_data(data)
+    except requests.RequestException as e:
+        logger.error(f"Error loading StackOverflow data: {e}")
+        st.error(f"Error loading StackOverflow data: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        st.error(f"Unexpected error: {e}")
 
 
 def load_high_score_so_data() -> None:
@@ -49,8 +59,15 @@ def load_high_score_so_data() -> None:
         f"?fromdate=1664150400&order=desc&sort=votes&site=stackoverflow&"
         "filter=!.DK56VBPooplF.)bWW5iOX32Fh1lcCkw1b_Y6Zkb7YD8.ZMhrR5.FRRsR6Z1uK8*Z5wPaONvyII"
     )
-    data = requests.get(so_api_base_url + parameters).json()
-    insert_so_data(data)
+    try:
+        data = requests.get(so_api_base_url + parameters).json()
+        insert_so_data(data)
+    except requests.RequestException as e:
+        logger.error(f"Error loading high score StackOverflow data: {e}")
+        st.error(f"Error loading high score StackOverflow data: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        st.error(f"Unexpected error: {e}")
 
 
 def insert_so_data(data: dict) -> None:
@@ -94,7 +111,11 @@ def insert_so_data(data: dict) -> None:
                   owner.reputation = q.owner.reputation
     MERGE (owner)-[:ASKED]->(question)
     """
-    neo4j_graph.query(import_query, {"data": data["items"]})
+    try:
+        neo4j_graph.query(import_query, {"data": data["items"]})
+    except Exception as e:
+        logger.error(f"Error inserting StackOverflow data into Neo4j: {e}")
+        st.error(f"Error inserting StackOverflow data into Neo4j: {e}")
 
 
 # Streamlit
@@ -136,7 +157,8 @@ def render_page():
                 st.image(datamodel_image)
                 st.caption("Go to http://localhost:7474/ to interact with the database")
             except Exception as e:
-                st.error(f"Error: {e}", icon="🚨")
+                logger.error(f"Error during import: {e}")
+                st.error(f"Error during import: {e}", icon="🚨")
     with st.expander("Highly ranked questions rather than tags?"):
         if st.button("Import highly ranked questions"):
             with st.spinner("Loading... This might take a minute or two."):
@@ -144,7 +166,8 @@ def render_page():
                     load_high_score_so_data()
                     st.success("Import successful", icon="✅")
                 except Exception as e:
-                    st.error(f"Error: {e}", icon="🚨")
+                    logger.error(f"Error during import of highly ranked questions: {e}")
+                    st.error(f"Error during import of highly ranked questions: {e}", icon="🚨")
 
 
 render_page()
